@@ -1,0 +1,82 @@
+services:
+  cerebro:
+    image: lmenezes/cerebro:0.8.3
+    container_name: cerebro
+    ports:
+      - "9000:9000"
+    command:
+      - -Dhosts.0.host=http://elasticsearch:9200
+    networks:
+      - es78net
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.8.0
+    container_name: kibana78
+    environment:
+      - I18N_LOCALE=zh-CN
+      - XPACK_GRAPH_ENABLED=true
+      - TIMELION_ENABLED=true
+      - XPACK_MONITORING_COLLECTION_ENABLED="true"
+    ports:
+      - "5601:5601"
+    networks:
+      - es78net
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.8.0
+    container_name: es78_01
+    environment:
+      - cluster.name=lanlance
+      - node.name=es78_01
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - discovery.seed_hosts=es78_01,es78_02
+      - cluster.initial_master_nodes=es78_01,es78_02
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es78data1:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - es78net
+
+  elasticsearch2:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.8.0
+    container_name: es78_02
+    environment:
+      - cluster.name=lanlance
+      - node.name=es78_02
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - discovery.seed_hosts=es78_01,es78_02
+      - cluster.initial_master_nodes=es78_01,es78_02
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es78data2:/usr/share/elasticsearch/data
+    networks:
+      - es78net
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.8.0
+    container_name: logstash78
+    volumes:
+      - ./movielens:/usr/share/logstash/movielens
+      - ./movielens/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    networks:
+      - es78net
+
+volumes:
+  es78data1:
+    driver: local
+  es78data2:
+    driver: local
+
+networks:
+  es78net:
+    driver: bridge
